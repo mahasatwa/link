@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 const COOKIE_NAME = "link-admin-token";
 
 export async function POST() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

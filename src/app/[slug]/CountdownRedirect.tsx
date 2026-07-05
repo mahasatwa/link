@@ -15,8 +15,9 @@ export default function CountdownRedirect({ targetUrl, title, slug }: Props) {
   useEffect(() => {
     if (countdown <= 0) {
       setRedirecting(true);
+      // Use replace to avoid adding to history stack (reduces throttling)
       if (typeof window !== "undefined") {
-        window.location.href = targetUrl;
+        window.location.replace(targetUrl);
       }
       return;
     }

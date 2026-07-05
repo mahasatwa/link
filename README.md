@@ -4,12 +4,12 @@ Platform tautan pendek untuk repository dokumen STIE Dwimulya.
 
 ## Fitur
 
-- 🔗 Tautan pendek dengan slug kustom
-- ⏱️ Halaman publik dengan countdown 3 detik sebelum redirect
-- 🔐 Panel admin dengan autentikasi JWT
-- 📊 Dashboard dengan statistik klik
-- 🏷️ Kategori: Akreditasi, AMI, RTM, Rekonsiliasi, Penelitian, Lulusan, SPMI, Lainnya
-- 🌐 Responsive design
+- Tautan pendek dengan slug kustom
+- Halaman publik dengan countdown 3 detik sebelum redirect
+- Panel admin dengan autentikasi JWT
+- Dashboard dengan statistik klik
+- Kategori: Akreditasi, AMI, RTM, Rekonsiliasi, Penelitian, Lulusan, SPMI, Lainnya
+- Responsive design
 
 ## Setup
 
@@ -28,11 +28,6 @@ npm run seed
 npm run dev
 ```
 
-## Default Credentials
-
-- Username: `admin`
-- Password: `link-admin-2025`
-
 ## Commands
 
 ```bash
@@ -43,7 +38,8 @@ npm run seed      # Seed database from seed-links.json
 ```
 
 ## Tech Stack
-- Next.js 14 (App Router)
+
+- Next.js 16 (App Router)
 - TypeScript
 - Tailwind CSS
 - SQLite (local dev) / PostgreSQL (production via Neon)
@@ -58,7 +54,7 @@ npm run seed      # Seed database from seed-links.json
    ```
    DATABASE_URL=postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/dbname?sslmode=require
    JWT_SECRET=your-secure-random-string
-   ADMIN_USER=admin
+   ADMIN_USER=your-admin-username
    ADMIN_PASS=your-secure-password
    ```
 5. Vercel will auto-deploy on push
@@ -69,3 +65,4 @@ npm run seed      # Seed database from seed-links.json
 1. Go to Vercel Dashboard → Your Project → Settings → Domains
 2. Add `link.stiedwimulya.ac.id`
 3. Configure DNS as shown in Vercel
+

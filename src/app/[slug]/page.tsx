@@ -5,11 +5,12 @@ import { notFound } from "next/navigation";
 import CountdownRedirect from "./CountdownRedirect";
 
 interface Props {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 export default async function SlugPage({ params }: Props) {
-  const link = await getLinkBySlug(params.slug);
+  const { slug } = await params;
+  const link = await getLinkBySlug(slug);
 
   if (!link) {
     notFound();
