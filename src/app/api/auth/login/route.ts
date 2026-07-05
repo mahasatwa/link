@@ -44,8 +44,9 @@ export async function POST(request: Request) {
 
     const adminUser = process.env.ADMIN_USER;
     const adminPassHash = process.env.ADMIN_PASS_HASH;
+    const adminPass = process.env.ADMIN_PASS;
     
-    if (!adminUser || !adminPassHash) {
+    if (!adminUser || (!adminPassHash && !adminPass)) {
       return NextResponse.json(
         { error: "Konfigurasi admin tidak ditemukan" },
         { status: 500 }
@@ -59,7 +60,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const isValidPassword = await compare(password, adminPassHash);
+    const isValidPassword = adminPassHash
+      ? await compare(password, adminPassHash)
+      : password === adminPass;
     if (username !== adminUser || !isValidPassword) {
       return NextResponse.json(
         { error: "Username atau password salah" },
