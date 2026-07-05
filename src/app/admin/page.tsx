@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getAllLinks, type Link } from "@/lib/db";
 import LinkComponent from "next/link";
 import DeleteButton from "@/components/DeleteButton";

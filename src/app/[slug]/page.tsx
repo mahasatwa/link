@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getLinkBySlug, incrementClicks } from "@/lib/db";
 import { notFound } from "next/navigation";
 import CountdownRedirect from "./CountdownRedirect";
