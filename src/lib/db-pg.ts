@@ -1,4 +1,14 @@
-import { sql } from "@vercel/postgres";
+import { Client } from "pg";
+
+let client: Client | null = null;
+
+async function getClient(): Promise<Client> {
+  if (!client) {
+    client = new Client({ connectionString: process.env.POSTGRES_URL });
+    await client.connect();
+  }
+  return client;
+}
 
 export interface Link {
   id: number;
@@ -19,7 +29,8 @@ export interface SeedLink {
 }
 
 export async function ensureTable() {
-  await sql`
+  const c = await getClient();
+  await c.query(`
     CREATE TABLE IF NOT EXISTS links (
       id SERIAL PRIMARY KEY,
       slug TEXT NOT NULL UNIQUE,
@@ -30,24 +41,27 @@ export async function ensureTable() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-  `;
-  await sql`CREATE INDEX IF NOT EXISTS idx_links_slug ON links(slug)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_links_category ON links(category)`;
+  `);
+  await c.query("CREATE INDEX IF NOT EXISTS idx_links_slug ON links(slug)");
+  await c.query("CREATE INDEX IF NOT EXISTS idx_links_category ON links(category)");
 }
 
 export async function getAllLinks(): Promise<Link[]> {
-  const { rows } = await sql`SELECT * FROM links ORDER BY created_at DESC`;
-  return rows as Link[];
+  const c = await getClient();
+  const { rows } = await c.query<Link>("SELECT * FROM links ORDER BY created_at DESC");
+  return rows;
 }
 
 export async function getLinkBySlug(slug: string): Promise<Link | null> {
-  const { rows } = await sql`SELECT * FROM links WHERE slug = ${slug}`;
-  return (rows[0] as Link) ?? null;
+  const c = await getClient();
+  const { rows } = await c.query<Link>("SELECT * FROM links WHERE slug = $1", [slug]);
+  return rows[0] ?? null;
 }
 
 export async function getLinkById(id: number): Promise<Link | null> {
-  const { rows } = await sql`SELECT * FROM links WHERE id = ${id}`;
-  return (rows[0] as Link) ?? null;
+  const c = await getClient();
+  const { rows } = await c.query<Link>("SELECT * FROM links WHERE id = $1", [id]);
+  return rows[0] ?? null;
 }
 
 export async function createLink(data: {
@@ -56,55 +70,58 @@ export async function createLink(data: {
   title: string;
   category: string;
 }): Promise<Link> {
-  const { rows } = await sql`
-    INSERT INTO links (slug, target_url, title, category)
-    VALUES (${data.slug}, ${data.target_url}, ${data.title}, ${data.category})
-    RETURNING *
-  `;
-  return rows[0] as Link;
+  const c = await getClient();
+  const { rows } = await c.query<Link>(
+    "INSERT INTO links (slug, target_url, title, category) VALUES ($1, $2, $3, $4) RETURNING *",
+    [data.slug, data.target_url, data.title, data.category]
+  );
+  return rows[0];
 }
 
 export async function updateLink(
   id: number,
   data: { slug: string; target_url: string; title: string; category: string }
 ): Promise<Link> {
-  const { rows } = await sql`
-    UPDATE links
-    SET slug = ${data.slug}, target_url = ${data.target_url}, title = ${data.title},
-        category = ${data.category}, updated_at = NOW()
-    WHERE id = ${id}
-    RETURNING *
-  `;
-  return rows[0] as Link;
+  const c = await getClient();
+  const { rows } = await c.query<Link>(
+    "UPDATE links SET slug = $1, target_url = $2, title = $3, category = $4, updated_at = NOW() WHERE id = $5 RETURNING *",
+    [data.slug, data.target_url, data.title, data.category, id]
+  );
+  return rows[0];
 }
 
 export async function deleteLink(id: number): Promise<void> {
-  await sql`DELETE FROM links WHERE id = ${id}`;
+  const c = await getClient();
+  await c.query("DELETE FROM links WHERE id = $1", [id]);
 }
 
 export async function incrementClicks(id: number): Promise<void> {
-  await sql`UPDATE links SET clicks = clicks + 1 WHERE id = ${id}`;
+  const c = await getClient();
+  await c.query("UPDATE links SET clicks = clicks + 1 WHERE id = $1", [id]);
 }
 
 export async function searchLinks(query: string): Promise<Link[]> {
+  const c = await getClient();
   const pattern = `%${query}%`;
-  const { rows } = await sql`
-    SELECT * FROM links WHERE title ILIKE ${pattern} OR slug ILIKE ${pattern}
-    ORDER BY created_at DESC
-  `;
-  return rows as Link[];
+  const { rows } = await c.query<Link>(
+    "SELECT * FROM links WHERE title ILIKE $1 OR slug ILIKE $1 ORDER BY created_at DESC",
+    [pattern]
+  );
+  return rows;
 }
 
 export async function countLinks(): Promise<number> {
-  const { rows } = await sql`SELECT COUNT(*)::int as count FROM links`;
-  return rows[0].count as number;
+  const c = await getClient();
+  const { rows } = await c.query<{ count: number }>("SELECT COUNT(*)::int as count FROM links");
+  return rows[0].count;
 }
 
 export async function countByCategory(): Promise<
   { category: string; count: number }[]
 > {
-  const { rows } = await sql`
-    SELECT category, COUNT(*)::int as count FROM links GROUP BY category
-  `;
-  return rows as { category: string; count: number }[];
+  const c = await getClient();
+  const { rows } = await c.query<{ category: string; count: number }>(
+    "SELECT category, COUNT(*)::int as count FROM links GROUP BY category"
+  );
+  return rows;
 }

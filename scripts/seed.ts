@@ -18,10 +18,12 @@ const seedData = JSON.parse(fs.readFileSync(SEED_PATH, "utf-8")) as {
 const isPg = process.env.DATABASE_URL?.startsWith("postgres");
 
 async function seedPg() {
-  const { sql } = await import("@vercel/postgres");
+  const { Client } = await import("pg");
+  const c = new Client({ connectionString: process.env.POSTGRES_URL });
+  await c.connect();
 
   // Ensure table
-  await sql`
+  await c.query(`
     CREATE TABLE IF NOT EXISTS links (
       id SERIAL PRIMARY KEY,
       slug TEXT NOT NULL UNIQUE,
@@ -32,23 +34,22 @@ async function seedPg() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-  `;
-  await sql`CREATE INDEX IF NOT EXISTS idx_links_slug ON links(slug)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_links_category ON links(category)`;
+  `);
+  await c.query("CREATE INDEX IF NOT EXISTS idx_links_slug ON links(slug)");
+  await c.query("CREATE INDEX IF NOT EXISTS idx_links_category ON links(category)");
 
   let count = 0;
   for (const link of seedData) {
-    const { rows } = await sql`
-      INSERT INTO links (slug, target_url, title, category)
-      VALUES (${link.slug}, ${link.target_url}, ${link.title}, ${link.category})
-      ON CONFLICT (slug) DO NOTHING
-      RETURNING id
-    `;
-    if (rows.length > 0) count++;
+    const result = await c.query(
+      "INSERT INTO links (slug, target_url, title, category) VALUES ($1, $2, $3, $4) ON CONFLICT (slug) DO NOTHING RETURNING id",
+      [link.slug, link.target_url, link.title, link.category]
+    );
+    if (result.rowCount && result.rowCount > 0) count++;
   }
 
-  const { rows: totalRows } = await sql`SELECT COUNT(*)::int as count FROM links`;
+  const { rows: totalRows } = await c.query<{ count: number }>("SELECT COUNT(*)::int as count FROM links");
   console.log(`✅ Seeded ${count} new links (${totalRows[0].count} total in database)`);
+  await c.end();
 }
 
 async function seedSqlite() {
@@ -71,12 +72,12 @@ async function seedSqlite() {
       title TEXT NOT NULL,
       category TEXT NOT NULL DEFAULT 'lainnya',
       clicks INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+      updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
     );
-    CREATE INDEX IF NOT EXISTS idx_links_slug ON links(slug);
-    CREATE INDEX IF NOT EXISTS idx_links_category ON links(category);
   `);
+  db.exec("CREATE INDEX IF NOT EXISTS idx_links_slug ON links(slug)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_links_category ON links(category)");
 
   const insert = db.prepare(
     "INSERT OR IGNORE INTO links (slug, target_url, title, category) VALUES (?, ?, ?, ?)"
@@ -88,7 +89,6 @@ async function seedSqlite() {
       const result = insert.run(link.slug, link.target_url, link.title, link.category);
       if (result.changes > 0) count++;
     }
-    return count;
   });
 
   insertMany(seedData);

@@ -1,16 +1,29 @@
-// Dynamic imports: better-sqlite3 is a native module unavailable on Vercel serverless;
-// @vercel/postgres is only functional with a real PG connection.
+// Platform-specific adapter: better-sqlite3 is a native C addon unavailable on
+// Vercel serverless; pg only works with a real Postgres connection.
+// Dynamic import is required here because the module choice depends on the
+// runtime environment (DATABASE_URL prefix / VERCEL env var).
 import type { Link, SeedLink } from "./db-pg";
-
-type Adapter = typeof import("./db-pg");
 
 const isPg = process.env.DATABASE_URL?.startsWith("postgres") || !!process.env.VERCEL;
 
-let cached: Adapter | null = null;
+type DbModule = {
+  ensureTable(): Promise<void>;
+  getAllLinks(): Promise<Link[]>;
+  getLinkBySlug(slug: string): Promise<Link | null>;
+  getLinkById(id: number): Promise<Link | null>;
+  createLink(data: { slug: string; target_url: string; title: string; category: string }): Promise<Link>;
+  updateLink(id: number, data: { slug: string; target_url: string; title: string; category: string }): Promise<Link>;
+  deleteLink(id: number): Promise<void>;
+  incrementClicks(id: number): Promise<void>;
+  searchLinks(query: string): Promise<Link[]>;
+  countLinks(): Promise<number>;
+  countByCategory(): Promise<{ category: string; count: number }[]>;
+};
 
-async function adapter(): Promise<Adapter> {
+let cached: DbModule | null = null;
+
+async function getDb(): Promise<DbModule> {
   if (!cached) {
-    // Dynamic import required: one of these modules is platform-specific
     cached = isPg
       ? await import("./db-pg")
       : await import("./db-sqlite");
@@ -20,20 +33,20 @@ async function adapter(): Promise<Adapter> {
 
 export type { Link, SeedLink };
 
-export async function ensureTable() {
-  (await adapter()).ensureTable();
+export async function ensureTable(): Promise<void> {
+  (await getDb()).ensureTable();
 }
 
-export async function getAllLinks() {
-  return (await adapter()).getAllLinks();
+export async function getAllLinks(): Promise<Link[]> {
+  return (await getDb()).getAllLinks();
 }
 
-export async function getLinkBySlug(slug: string) {
-  return (await adapter()).getLinkBySlug(slug);
+export async function getLinkBySlug(slug: string): Promise<Link | null> {
+  return (await getDb()).getLinkBySlug(slug);
 }
 
-export async function getLinkById(id: number) {
-  return (await adapter()).getLinkById(id);
+export async function getLinkById(id: number): Promise<Link | null> {
+  return (await getDb()).getLinkById(id);
 }
 
 export async function createLink(data: {
@@ -41,33 +54,33 @@ export async function createLink(data: {
   target_url: string;
   title: string;
   category: string;
-}) {
-  return (await adapter()).createLink(data);
+}): Promise<Link> {
+  return (await getDb()).createLink(data);
 }
 
 export async function updateLink(
   id: number,
   data: { slug: string; target_url: string; title: string; category: string }
-) {
-  return (await adapter()).updateLink(id, data);
+): Promise<Link> {
+  return (await getDb()).updateLink(id, data);
 }
 
-export async function deleteLink(id: number) {
-  return (await adapter()).deleteLink(id);
+export async function deleteLink(id: number): Promise<void> {
+  return (await getDb()).deleteLink(id);
 }
 
-export async function incrementClicks(id: number) {
-  return (await adapter()).incrementClicks(id);
+export async function incrementClicks(id: number): Promise<void> {
+  return (await getDb()).incrementClicks(id);
 }
 
-export async function searchLinks(query: string) {
-  return (await adapter()).searchLinks(query);
+export async function searchLinks(query: string): Promise<Link[]> {
+  return (await getDb()).searchLinks(query);
 }
 
-export async function countLinks() {
-  return (await adapter()).countLinks();
+export async function countLinks(): Promise<number> {
+  return (await getDb()).countLinks();
 }
 
-export async function countByCategory() {
-  return (await adapter()).countByCategory();
+export async function countByCategory(): Promise<{ category: string; count: number }[]> {
+  return (await getDb()).countByCategory();
 }

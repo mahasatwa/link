@@ -27,9 +27,9 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default async function AdminPage() {
-  const links = await getAllLinks();
+  const links: Link[] = await getAllLinks();
   const total = links.length;
-  const totalClicks = links.reduce((sum, l) => sum + l.clicks, 0);
+  const totalClicks = links.reduce((sum: number, l: Link) => sum + l.clicks, 0);
 
   return (
     <div>
